@@ -81,7 +81,7 @@ def get_mpi_rank():
     exit(1)
 
 def get_mpi_size():
-    size_envs = ["OMPI_COMM_WORLD_SIZE", "PMI_SIZE", "PMIX_SIZE", "OMPI_MCA_orte_ess_num_procs"]
+    size_envs = ["OMPI_COMM_WORLD_SIZE", "PMI_SIZE", "PMIX_SIZE", "OMPI_MCA_orte_ess_num_procs", "WORLD_SIZE"]
     for size_env in size_envs:
         size = os.environ.get(size_env)
         if size:
