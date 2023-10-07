@@ -26,6 +26,7 @@ import shutil
 
 mpiexec_cmd = os.environ.get("MPITX_MPIEXEC", "mpiexec")
 tmux_cmd = os.environ.get("MPITX_TMUX", "tmux")
+dump2file = os.environ.get("MPITX_DUMP2FILE", "False").lower() in ('true', '1', 't')
 
 # Utils
 # -----------------------------------------------------------------------------
@@ -203,19 +204,22 @@ def establish_connection_to_parent(host, port, token, rank, size):
 # Reverse shell
 # -----------------------------------------------------------------------------
 
-def proxy_fd(in_fds, out_fds):
+def proxy_fd(in_fds, out_fdss):
     while True:
         rlist, _wlist, _xlist = select.select(in_fds, [], [])
-        for in_fd, out_fd in zip(in_fds, out_fds):
+        for in_fd, out_fds in zip(in_fds, out_fdss):
             if in_fd in rlist:
                 try:
                     data = os.read(in_fd, 1024)
                 except:
                     data = b""
                 if data:
-                    while data:
-                        n = os.write(out_fd, data)
-                        data = data[n:]
+                    ori_data = data
+                    for out_fd in out_fds:
+                        data = ori_data
+                        while data:
+                            n = os.write(out_fd, data)
+                            data = data[n:]
                 else:
                     return
 
@@ -281,7 +285,7 @@ def wait_on_tmux_pane(on_listen_hook):
                     reset_tty_mode = True
 
                 try:
-                    proxy_fd([conn1.fileno(), sys.stdin.fileno()], [sys.stdout.fileno(), conn1.fileno()])
+                    proxy_fd([conn1.fileno(), sys.stdin.fileno()], [[sys.stdout.fileno()], [conn1.fileno()]])
                 finally:
                     if reset_tty_mode:
                         tty.tcsetattr(sys.stdin.fileno(), tty.TCSAFLUSH, mode)
@@ -299,6 +303,10 @@ def launch_reverse_shell(host, port, token, commands):
                     os.close(fd)
                     return
 
+    if dump2file:
+        rank = get_mpi_rank()
+        fo = open(f"rank{rank}.log", "w")
+    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         s.sendall(token.encode())
@@ -313,8 +321,14 @@ def launch_reverse_shell(host, port, token, commands):
         t = threading.Thread(target=watch_window_size, args=(fd,))
         t.start()
 
-        proxy_fd([s.fileno(), fd], [fd, s.fileno()])
+        if dump2file:
+            proxy_fd([s.fileno(), fd], [[fd], [s.fileno(), fo.fileno()]])
+        else:
+            proxy_fd([s.fileno(), fd], [[fd], [s.fileno()]])
         os.waitpid(pid, 0)
+        
+        if dump2file:
+            fo.close()
 
 # Main
 # -----------------------------------------------------------------------------
