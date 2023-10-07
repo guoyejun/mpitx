@@ -72,7 +72,7 @@ def deserialize(obj_str):
     return pickle.loads(base64.b64decode(obj_str.encode()))
 
 def get_mpi_rank():
-    rank_envs = ["OMPI_COMM_WORLD_RANK", "PMI_RANK", "PMIX_RANK", "OMPI_MCA_orte_ess_vpid"]
+    rank_envs = ["OMPI_COMM_WORLD_RANK", "PMI_RANK", "PMIX_RANK", "OMPI_MCA_orte_ess_vpid", "PALS_LOCAL_RANKID"]
     for rank_env in rank_envs:
         rank = os.environ.get(rank_env)
         if rank:
@@ -81,7 +81,7 @@ def get_mpi_rank():
     exit(1)
 
 def get_mpi_size():
-    size_envs = ["OMPI_COMM_WORLD_SIZE", "PMI_SIZE", "PMIX_SIZE", "OMPI_MCA_orte_ess_num_procs"]
+    size_envs = ["OMPI_COMM_WORLD_SIZE", "PMI_SIZE", "PMIX_SIZE", "OMPI_MCA_orte_ess_num_procs", "PALS_LOCAL_SIZE"]
     for size_env in size_envs:
         size = os.environ.get(size_env)
         if size:
